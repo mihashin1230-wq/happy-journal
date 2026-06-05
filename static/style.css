@@ -410,7 +410,7 @@ textarea::placeholder { color: #c8c8c8; }
 
 .entry-text {
   flex: 1;
-  font-family: 'Nanum Pen Script', cursive;
+  font-family: 'Gamja Flower', cursive;
   font-size: 1.15rem;
   line-height: 1.75;
   color: var(--text);
