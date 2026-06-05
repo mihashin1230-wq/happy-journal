@@ -41,9 +41,20 @@ const removeMedia = document.getElementById('remove-media');
 
 let selectedFile = null;
 
+const cameraInput = document.getElementById('camera-input');
+const fileBtn = document.getElementById('file-btn');
+const cameraBtn = document.getElementById('camera-btn');
+
 mediaDrop.addEventListener('click', (e) => {
   if (e.target.closest('#remove-media')) return;
+  if (e.target.closest('#file-btn') || e.target.closest('#camera-btn')) return;
   mediaInput.click();
+});
+
+fileBtn.addEventListener('click', (e) => { e.stopPropagation(); mediaInput.click(); });
+cameraBtn.addEventListener('click', (e) => { e.stopPropagation(); cameraInput.click(); });
+cameraInput.addEventListener('change', () => {
+  if (cameraInput.files[0]) setMedia(cameraInput.files[0]);
 });
 
 mediaInput.addEventListener('change', () => {
@@ -156,9 +167,9 @@ async function loadEntries() {
 
 function appendDateLabel(dateStr) {
   const el = document.createElement('div');
-  el.className = 'date-label';
+  el.className = 'date-label' + (dateStr === todayStr() ? ' today' : '');
   el.dataset.date = dateStr;
-  el.textContent = toKoreanDate(dateStr);
+  el.textContent = dateStr === todayStr() ? '✦ 오늘 · ' + toKoreanDate(dateStr) : toKoreanDate(dateStr);
   entriesList.appendChild(el);
 }
 
@@ -186,41 +197,82 @@ function buildCard(entry) {
   card.className = 'entry-card';
   card.dataset.id = entry.id;
 
-  let thumbHtml = '';
+  const liked = getLiked(entry.id);
+  const likeCount = entry.likes || 0;
+
+  let leftHtml = '';
   if (entry.media_filename) {
     const src = `/uploads/${entry.media_filename}`;
-    if (entry.media_type === 'video') {
-      thumbHtml = `
-        <div class="entry-thumb" onclick="openMedia(this)">
-          <video src="${src}" muted preload="metadata" playsinline data-src="${src}"></video>
-          <div class="play-badge">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="white"><polygon points="5,3 19,12 5,21"/></svg>
-          </div>
-        </div>`;
-    } else {
-      thumbHtml = `
-        <div class="entry-thumb" onclick="openMedia(this)">
-          <img src="${src}" alt="" loading="lazy" data-src="${src}">
-        </div>`;
-    }
+    leftHtml = entry.media_type === 'video'
+      ? `<div class="entry-thumb" onclick="openMedia(this)">
+           <video src="${src}" muted preload="metadata" playsinline data-src="${src}"></video>
+           <div class="play-badge"><svg width="20" height="20" viewBox="0 0 24 24" fill="white"><polygon points="5,3 19,12 5,21"/></svg></div>
+         </div>`
+      : `<div class="entry-thumb" onclick="openMedia(this)">
+           <img src="${src}" alt="" loading="lazy" data-src="${src}">
+         </div>`;
+  } else {
+    const [, m, d] = entry.date.split('-');
+    leftHtml = `<div class="entry-date-badge">
+      <span class="badge-day">${parseInt(d)}</span>
+      <span class="badge-month">${parseInt(m)}월</span>
+    </div>`;
   }
 
   const authorHtml = entry.author
     ? `<div class="entry-author">${escapeHtml(entry.author)}</div>` : '';
 
   card.innerHTML = `
-    ${thumbHtml}
+    ${leftHtml}
     <div class="entry-right">
       ${authorHtml}
       <p class="entry-text">${escapeHtml(entry.text)}</p>
       <div class="entry-meta">
+        <button class="like-btn ${liked ? 'liked' : ''}" data-id="${entry.id}">
+          ${liked ? '♥' : '♡'} <span class="like-count">${likeCount > 0 ? likeCount : ''}</span>
+        </button>
         <button class="del-btn" data-id="${entry.id}">삭제</button>
       </div>
     </div>
   `;
 
   card.querySelector('.del-btn').addEventListener('click', () => deleteEntry(entry.id, card));
+  card.querySelector('.like-btn').addEventListener('click', () => toggleLike(entry.id, card));
   return card;
+}
+
+// ── 좋아요 ──
+function getLiked(id) {
+  return JSON.parse(localStorage.getItem('liked') || '[]').includes(id);
+}
+
+function setLiked(id, val) {
+  const arr = JSON.parse(localStorage.getItem('liked') || '[]');
+  const idx = arr.indexOf(id);
+  if (val && idx === -1) arr.push(id);
+  if (!val && idx !== -1) arr.splice(idx, 1);
+  localStorage.setItem('liked', JSON.stringify(arr));
+}
+
+async function toggleLike(id, card) {
+  const btn = card.querySelector('.like-btn');
+  if (btn.dataset.loading) return;
+  btn.dataset.loading = '1';
+
+  btn.style.transform = 'scale(1.4)';
+  setTimeout(() => { btn.style.transform = ''; delete btn.dataset.loading; }, 200);
+
+  try {
+    const res = await fetch(`/api/entries/${id}/like`, { method: 'POST' });
+    const data = await res.json();
+    const newLiked = !getLiked(id);
+    setLiked(id, newLiked);
+    btn.classList.toggle('liked', newLiked);
+    btn.childNodes[0].textContent = newLiked ? '♥ ' : '♡ ';
+    btn.querySelector('.like-count').textContent = data.likes > 0 ? data.likes : '';
+  } catch {
+    console.error('like failed');
+  }
 }
 
 async function deleteEntry(id, card) {

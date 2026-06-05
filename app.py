@@ -35,10 +35,11 @@ def init_db():
                 created_at TEXT NOT NULL
             )
         ''')
-        # 기존 DB에 author 컬럼 없으면 추가
         cols = [r[1] for r in conn.execute('PRAGMA table_info(entries)').fetchall()]
         if 'author' not in cols:
             conn.execute('ALTER TABLE entries ADD COLUMN author TEXT')
+        if 'likes' not in cols:
+            conn.execute('ALTER TABLE entries ADD COLUMN likes INTEGER DEFAULT 0')
 
 
 def allowed_file(filename):
@@ -89,6 +90,17 @@ def create_entry():
         entry = conn.execute('SELECT * FROM entries WHERE id = ?', (entry_id,)).fetchone()
 
     return jsonify(dict(entry)), 201
+
+
+@app.route('/api/entries/<int:entry_id>/like', methods=['POST'])
+def like_entry(entry_id):
+    with get_db() as conn:
+        row = conn.execute('SELECT * FROM entries WHERE id = ?', (entry_id,)).fetchone()
+        if not row:
+            return jsonify({'error': '없는 항목'}), 404
+        conn.execute('UPDATE entries SET likes = likes + 1 WHERE id = ?', (entry_id,))
+        new_count = conn.execute('SELECT likes FROM entries WHERE id = ?', (entry_id,)).fetchone()[0]
+    return jsonify({'likes': new_count})
 
 
 @app.route('/api/entries/<int:entry_id>', methods=['DELETE'])

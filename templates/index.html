@@ -31,13 +31,18 @@
 
         <div class="media-zone" id="media-drop">
           <input type="file" id="media-input" accept="image/*,video/*" hidden>
+          <input type="file" id="camera-input" accept="image/*" capture="environment" hidden>
           <div class="zone-placeholder" id="drop-placeholder">
-            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round">
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round">
               <rect x="3" y="3" width="18" height="18" rx="4"/>
               <circle cx="8.5" cy="8.5" r="1.5"/>
               <polyline points="21 15 16 10 5 21"/>
             </svg>
             <p>사진 또는 동영상 추가</p>
+            <div class="zone-btns">
+              <button type="button" class="zone-btn" id="file-btn">파일 선택</button>
+              <button type="button" class="zone-btn camera" id="camera-btn">📷 카메라</button>
+            </div>
           </div>
           <div class="zone-preview" id="preview-wrap" style="display:none">
             <img id="preview-img" style="display:none" alt="">
