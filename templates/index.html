@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>그럼에도 불구하고</title>
+  <link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable.css">
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+
+  <header class="page-header">
+    <p class="header-label">오늘의 기록</p>
+    <h1>그럼에도 불구하고<br><em>오늘 나를 기쁘게 한 것</em></h1>
+  </header>
+
+  <main>
+    <section class="composer">
+      <form id="entry-form">
+
+        <div class="date-row">
+          <button type="button" class="date-btn" id="date-display-btn">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><rect x="3" y="4" width="18" height="18" rx="3"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="16" y1="2" x2="16" y2="6"/></svg>
+            <span id="date-display">로딩 중</span>
+          </button>
+          <input type="date" id="date-input" hidden>
+        </div>
+
+        <div class="media-zone" id="media-drop">
+          <input type="file" id="media-input" accept="image/*,video/*" hidden>
+          <div class="zone-placeholder" id="drop-placeholder">
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="3" y="3" width="18" height="18" rx="4"/>
+              <circle cx="8.5" cy="8.5" r="1.5"/>
+              <polyline points="21 15 16 10 5 21"/>
+            </svg>
+            <p>사진 또는 동영상 추가</p>
+          </div>
+          <div class="zone-preview" id="preview-wrap" style="display:none">
+            <img id="preview-img" style="display:none" alt="">
+            <video id="preview-video" controls playsinline style="display:none"></video>
+            <button type="button" class="remove-btn" id="remove-media">✕</button>
+          </div>
+        </div>
+
+        <div class="author-row">
+          <input type="text" id="author-input" placeholder="이름 또는 닉네임" maxlength="20" autocomplete="off">
+        </div>
+
+        <textarea id="text-input" placeholder="오늘 나를 기쁘게 한 것을 적어보세요..." rows="5"></textarea>
+
+        <div class="form-footer">
+          <button type="submit" id="submit-btn">기록하기</button>
+        </div>
+
+      </form>
+    </section>
+
+    <div class="divider"></div>
+
+    <section class="entries">
+      <div id="entries-list"></div>
+    </section>
+  </main>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>

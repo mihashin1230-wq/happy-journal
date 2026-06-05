@@ -1,0 +1,11 @@
+[build]
+builder = "nixpacks"
+
+[deploy]
+startCommand = "python app.py"
+healthcheckPath = "/"
+
+[environments.production.variables]
+FLASK_ENV = "production"
+DB_PATH = "/data/journal.db"
+UPLOAD_FOLDER = "/data/uploads"
