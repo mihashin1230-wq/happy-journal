@@ -410,8 +410,9 @@ textarea::placeholder { color: #c8c8c8; }
 
 .entry-text {
   flex: 1;
-  font-size: 0.93rem;
-  line-height: 1.8;
+  font-family: 'Nanum Pen Script', cursive;
+  font-size: 1.15rem;
+  line-height: 1.75;
   color: var(--text);
   word-break: break-word;
   display: -webkit-box;
