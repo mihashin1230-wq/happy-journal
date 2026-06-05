@@ -6,13 +6,13 @@
 }
 
 :root {
-  --bg: #edecea;
+  --bg: #f1f4ee;
   --surface: #ffffff;
-  --text: #111111;
-  --muted: #999999;
-  --accent: #111111;
-  --accent-warm: #b05c38;
-  --border: rgba(0, 0, 0, 0.09);
+  --text: #1a2318;
+  --muted: #8a9e86;
+  --accent: #1a2318;
+  --accent-warm: #5a7a56;
+  --border: rgba(50, 80, 45, 0.1);
   --radius: 5px;
 }
 
@@ -282,7 +282,7 @@ textarea::placeholder { color: #c8c8c8; }
 .date-label:first-child { margin-top: 0; }
 
 .date-label.today {
-  background: var(--text);
+  background: var(--accent-warm);
   color: #fff;
   letter-spacing: 0.22em;
 }
