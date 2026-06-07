@@ -186,6 +186,21 @@ def backup():
         conn.close()
 
 
+@app.route('/debug/db')
+def debug_db():
+    try:
+        url_info = (DATABASE_URL[:30] + '...') if DATABASE_URL else 'NOT SET'
+        conn = get_db()
+        with conn.cursor() as cur:
+            cur.execute('SELECT COUNT(*) FROM entries')
+            count = cur.fetchone()[0]
+        conn.close()
+        return jsonify({'url': url_info, 'count': count, 'db_ready': _db_ready})
+    except Exception as e:
+        url_info = (DATABASE_URL[:30] + '...') if DATABASE_URL else 'NOT SET'
+        return jsonify({'error': str(e), 'url': url_info, 'db_ready': _db_ready})
+
+
 @app.route('/uploads/<filename>')
 def uploaded_file(filename):
     return send_from_directory(app.config['UPLOAD_FOLDER'], filename)
