@@ -128,6 +128,24 @@ def verify_admin():
     return jsonify({'ok': False}), 401
 
 
+@app.route('/backup')
+def backup():
+    import json as _json
+    key = request.args.get('key', '')
+    if not ADMIN_PASSWORD or key != ADMIN_PASSWORD:
+        return jsonify({'error': '권한 없음'}), 403
+    with get_db() as conn:
+        rows = conn.execute('SELECT * FROM entries ORDER BY date DESC, created_at DESC').fetchall()
+    data = [dict(r) for r in rows]
+    filename = f"journal_backup_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
+    from flask import Response
+    return Response(
+        _json.dumps(data, ensure_ascii=False, indent=2),
+        mimetype='application/json',
+        headers={'Content-Disposition': f'attachment; filename={filename}'}
+    )
+
+
 @app.route('/uploads/<filename>')
 def uploaded_file(filename):
     return send_from_directory(app.config['UPLOAD_FOLDER'], filename)

@@ -286,6 +286,13 @@ async function activateAdmin() {
           meta.appendChild(delBtn);
         }
       });
+      // 백업 버튼 표시
+      const backupBtn = document.createElement('a');
+      backupBtn.href = `/backup?key=${encodeURIComponent(pw)}`;
+      backupBtn.download = '';
+      backupBtn.className = 'backup-btn';
+      backupBtn.textContent = '⬇ 백업 다운로드';
+      document.querySelector('.site-footer').prepend(backupBtn);
     } else {
       alert('비밀번호가 틀렸습니다.');
     }
