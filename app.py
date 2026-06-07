@@ -52,6 +52,19 @@ def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
 
+_db_ready = False
+
+@app.before_request
+def ensure_db():
+    global _db_ready
+    if not _db_ready and DATABASE_URL:
+        try:
+            init_db()
+            _db_ready = True
+        except Exception as e:
+            print(f"DB 초기화 오류: {e}")
+
+
 @app.route('/')
 def index():
     return render_template('index.html')
@@ -179,8 +192,14 @@ def uploaded_file(filename):
 
 
 if __name__ == '__main__':
-    init_db()
     port = int(os.environ.get('PORT', 5000))
     debug = os.environ.get('FLASK_ENV') != 'production'
+    if DATABASE_URL:
+        try:
+            init_db()
+        except Exception as e:
+            print(f"DB 초기화 경고: {e}")
+    else:
+        print("WARNING: DATABASE_URL이 설정되지 않았습니다.")
     print(f"일기장 실행 중 → http://127.0.0.1:{port}")
     app.run(host='0.0.0.0', port=port, debug=debug)
