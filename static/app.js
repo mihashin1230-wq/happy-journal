@@ -114,7 +114,15 @@ const submitBtn = document.getElementById('submit-btn');
 
 form.addEventListener('submit', async (e) => {
   e.preventDefault();
+  const author = authorInput.value.trim();
   const text = textInput.value.trim();
+
+  if (!author) {
+    authorInput.focus();
+    authorInput.classList.add('input-error');
+    setTimeout(() => authorInput.classList.remove('input-error'), 1500);
+    return;
+  }
   if (!text) { textInput.focus(); return; }
 
   submitBtn.disabled = true;
@@ -122,7 +130,7 @@ form.addEventListener('submit', async (e) => {
 
   const formData = new FormData();
   formData.append('date', dateInput.value);
-  formData.append('author', authorInput.value.trim());
+  formData.append('author', author);
   formData.append('text', text);
   if (selectedFile) formData.append('media', selectedFile);
 
@@ -174,9 +182,9 @@ function appendDateLabel(dateStr) {
 }
 
 function prependEntry(entry) {
+  addCreated(entry.id);
   removeEmpty();
 
-  // 같은 날짜 레이블이 맨 위에 있으면 재사용
   const firstLabel = entriesList.querySelector('.date-label');
   if (!firstLabel || firstLabel.dataset.date !== entry.date) {
     const label = document.createElement('div');
@@ -187,7 +195,6 @@ function prependEntry(entry) {
   }
 
   const card = buildCard(entry);
-  // 레이블 바로 뒤에 삽입
   const label = entriesList.querySelector('.date-label');
   label.insertAdjacentElement('afterend', card);
 }
@@ -199,6 +206,8 @@ function buildCard(entry) {
 
   const liked = getLiked(entry.id);
   const likeCount = entry.likes || 0;
+  const own = isOwn(entry.id) || adminMode;
+  if (own) card.classList.add('own-entry');
 
   let leftHtml = '';
   if (entry.media_filename) {
@@ -231,15 +240,59 @@ function buildCard(entry) {
         <button class="like-btn ${liked ? 'liked' : ''}" data-id="${entry.id}">
           ${liked ? '♥' : '♡'} <span class="like-count">${likeCount > 0 ? likeCount : ''}</span>
         </button>
-        <button class="del-btn" data-id="${entry.id}">삭제</button>
+        ${own ? `<button class="del-btn" data-id="${entry.id}">삭제</button>` : ''}
       </div>
     </div>
   `;
 
-  card.querySelector('.del-btn').addEventListener('click', () => deleteEntry(entry.id, card));
+  if (own) card.querySelector('.del-btn')?.addEventListener('click', () => deleteEntry(entry.id, card));
   card.querySelector('.like-btn').addEventListener('click', () => toggleLike(entry.id, card));
   return card;
 }
+
+// ── 내 글 추적 ──
+function getCreated() {
+  return JSON.parse(localStorage.getItem('journal_created') || '[]');
+}
+function addCreated(id) {
+  const arr = getCreated();
+  if (!arr.includes(id)) { arr.push(id); localStorage.setItem('journal_created', JSON.stringify(arr)); }
+}
+function isOwn(id) { return getCreated().includes(id); }
+
+// ── 관리자 모드 (푸터 더블클릭) ──
+let adminMode = false;
+
+async function activateAdmin() {
+  const pw = prompt('관리자 비밀번호:');
+  if (!pw) return;
+  try {
+    const res = await fetch('/api/admin/verify', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ password: pw })
+    });
+    if (res.ok) {
+      adminMode = true;
+      document.querySelectorAll('.entry-card').forEach(card => {
+        if (card.classList.contains('own-entry')) return;
+        card.classList.add('own-entry');
+        const meta = card.querySelector('.entry-meta');
+        if (meta && !meta.querySelector('.del-btn')) {
+          const delBtn = document.createElement('button');
+          delBtn.className = 'del-btn';
+          delBtn.textContent = '삭제';
+          delBtn.addEventListener('click', () => deleteEntry(parseInt(card.dataset.id), card));
+          meta.appendChild(delBtn);
+        }
+      });
+    } else {
+      alert('비밀번호가 틀렸습니다.');
+    }
+  } catch { alert('오류가 발생했습니다.'); }
+}
+
+document.querySelector('.site-footer').addEventListener('dblclick', activateAdmin);
 
 // ── 좋아요 ──
 function getLiked(id) {

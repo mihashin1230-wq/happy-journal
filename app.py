@@ -13,6 +13,7 @@ app.config['MAX_CONTENT_LENGTH'] = 200 * 1024 * 1024  # 200MB
 ALLOWED_EXTENSIONS = {'jpg', 'jpeg', 'png', 'gif', 'webp', 'mp4', 'mov', 'avi', 'webm'}
 
 DB_PATH = os.environ.get('DB_PATH', os.path.join(os.path.dirname(__file__), 'journal.db'))
+ADMIN_PASSWORD = os.environ.get('ADMIN_PASSWORD', '')
 
 
 def get_db():
@@ -115,6 +116,16 @@ def delete_entry(entry_id):
                 os.remove(path)
         conn.execute('DELETE FROM entries WHERE id = ?', (entry_id,))
     return jsonify({'ok': True})
+
+
+@app.route('/api/admin/verify', methods=['POST'])
+def verify_admin():
+    if not ADMIN_PASSWORD:
+        return jsonify({'ok': False}), 403
+    data = request.get_json()
+    if data and data.get('password') == ADMIN_PASSWORD:
+        return jsonify({'ok': True})
+    return jsonify({'ok': False}), 401
 
 
 @app.route('/uploads/<filename>')

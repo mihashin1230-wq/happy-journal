@@ -113,6 +113,7 @@ body {
 
 .author-row input::placeholder { color: #ccc; font-weight: 400; }
 .author-row input:focus { border-color: var(--text); }
+.author-row input.input-error { border-color: #e00 !important; }
 
 /* 미디어 존 */
 .media-zone {
@@ -439,7 +440,7 @@ textarea::placeholder { color: #c8c8c8; }
   transition: color 0.15s;
 }
 
-.entry-card:hover .del-btn { color: #ccc; }
+.entry-card.own-entry:hover .del-btn { color: #ccc; }
 .del-btn:hover { color: #e00 !important; }
 
 /* 빈 상태 */
