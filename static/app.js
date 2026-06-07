@@ -18,7 +18,6 @@ function todayStr() {
 dateInput.value = todayStr();
 dateDisplay.textContent = toKoreanDate(dateInput.value);
 
-dateDisplayBtn.addEventListener('click', () => dateInput.showPicker?.() ?? dateInput.click());
 dateInput.addEventListener('change', () => {
   dateDisplay.textContent = toKoreanDate(dateInput.value);
 });

@@ -89,9 +89,21 @@ body {
   margin-bottom: 16px;
   letter-spacing: 0.04em;
   transition: color 0.15s;
+  position: relative;
 }
 
 .date-btn:hover { color: var(--text); }
+
+.date-btn input[type="date"] {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  width: 100%;
+  height: 100%;
+  cursor: pointer;
+  border: none;
+  background: none;
+}
 
 /* 닉네임 */
 .author-row { margin-bottom: 10px; }
