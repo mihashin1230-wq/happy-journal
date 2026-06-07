@@ -302,7 +302,7 @@ async function activateAdmin() {
   } catch { alert('오류가 발생했습니다.'); }
 }
 
-document.querySelector('.site-footer').addEventListener('dblclick', activateAdmin);
+document.querySelector('.site-footer')?.addEventListener('dblclick', activateAdmin);
 
 // ── 좋아요 ──
 function getLiked(id) {
