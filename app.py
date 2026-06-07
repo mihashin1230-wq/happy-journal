@@ -1,7 +1,9 @@
 import os
-import sqlite3
+import json
+import psycopg2
+import psycopg2.extras
 from datetime import datetime
-from flask import Flask, request, jsonify, render_template, send_from_directory
+from flask import Flask, request, jsonify, render_template, send_from_directory, Response
 from werkzeug.utils import secure_filename
 
 app = Flask(__name__)
@@ -12,35 +14,38 @@ app.config['MAX_CONTENT_LENGTH'] = 200 * 1024 * 1024  # 200MB
 
 ALLOWED_EXTENSIONS = {'jpg', 'jpeg', 'png', 'gif', 'webp', 'mp4', 'mov', 'avi', 'webm'}
 
-DB_PATH = os.environ.get('DB_PATH', os.path.join(os.path.dirname(__file__), 'journal.db'))
+DATABASE_URL = os.environ.get('DATABASE_URL', '')
+if DATABASE_URL.startswith('postgres://'):
+    DATABASE_URL = DATABASE_URL.replace('postgres://', 'postgresql://', 1)
+
 ADMIN_PASSWORD = os.environ.get('ADMIN_PASSWORD', '')
 
 
 def get_db():
-    conn = sqlite3.connect(DB_PATH)
-    conn.row_factory = sqlite3.Row
+    conn = psycopg2.connect(DATABASE_URL)
     return conn
 
 
 def init_db():
     os.makedirs(UPLOAD_FOLDER, exist_ok=True)
-    with get_db() as conn:
-        conn.execute('''
-            CREATE TABLE IF NOT EXISTS entries (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                date TEXT NOT NULL,
-                author TEXT,
-                text TEXT NOT NULL,
-                media_filename TEXT,
-                media_type TEXT,
-                created_at TEXT NOT NULL
-            )
-        ''')
-        cols = [r[1] for r in conn.execute('PRAGMA table_info(entries)').fetchall()]
-        if 'author' not in cols:
-            conn.execute('ALTER TABLE entries ADD COLUMN author TEXT')
-        if 'likes' not in cols:
-            conn.execute('ALTER TABLE entries ADD COLUMN likes INTEGER DEFAULT 0')
+    conn = get_db()
+    try:
+        with conn.cursor() as cur:
+            cur.execute('''
+                CREATE TABLE IF NOT EXISTS entries (
+                    id SERIAL PRIMARY KEY,
+                    date TEXT NOT NULL,
+                    author TEXT,
+                    text TEXT NOT NULL,
+                    media_filename TEXT,
+                    media_type TEXT,
+                    created_at TEXT NOT NULL,
+                    likes INTEGER DEFAULT 0
+                )
+            ''')
+        conn.commit()
+    finally:
+        conn.close()
 
 
 def allowed_file(filename):
@@ -54,11 +59,14 @@ def index():
 
 @app.route('/api/entries', methods=['GET'])
 def get_entries():
-    with get_db() as conn:
-        rows = conn.execute(
-            'SELECT * FROM entries ORDER BY date DESC, created_at DESC'
-        ).fetchall()
-    return jsonify([dict(r) for r in rows])
+    conn = get_db()
+    try:
+        with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+            cur.execute('SELECT * FROM entries ORDER BY date DESC, created_at DESC')
+            rows = cur.fetchall()
+        return jsonify([dict(r) for r in rows])
+    finally:
+        conn.close()
 
 
 @app.route('/api/entries', methods=['POST'])
@@ -82,40 +90,56 @@ def create_entry():
             file.save(os.path.join(app.config['UPLOAD_FOLDER'], media_filename))
             media_type = 'video' if ext in {'mp4', 'mov', 'avi', 'webm'} else 'image'
 
-    with get_db() as conn:
-        cursor = conn.execute(
-            'INSERT INTO entries (date, author, text, media_filename, media_type, created_at) VALUES (?, ?, ?, ?, ?, ?)',
-            (date, author, text, media_filename, media_type, datetime.now().isoformat())
-        )
-        entry_id = cursor.lastrowid
-        entry = conn.execute('SELECT * FROM entries WHERE id = ?', (entry_id,)).fetchone()
-
-    return jsonify(dict(entry)), 201
+    conn = get_db()
+    try:
+        with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+            cur.execute(
+                '''INSERT INTO entries (date, author, text, media_filename, media_type, created_at, likes)
+                   VALUES (%s, %s, %s, %s, %s, %s, 0) RETURNING *''',
+                (date, author, text, media_filename, media_type, datetime.now().isoformat())
+            )
+            entry = cur.fetchone()
+        conn.commit()
+        return jsonify(dict(entry)), 201
+    finally:
+        conn.close()
 
 
 @app.route('/api/entries/<int:entry_id>/like', methods=['POST'])
 def like_entry(entry_id):
-    with get_db() as conn:
-        row = conn.execute('SELECT * FROM entries WHERE id = ?', (entry_id,)).fetchone()
-        if not row:
-            return jsonify({'error': '없는 항목'}), 404
-        conn.execute('UPDATE entries SET likes = likes + 1 WHERE id = ?', (entry_id,))
-        new_count = conn.execute('SELECT likes FROM entries WHERE id = ?', (entry_id,)).fetchone()[0]
-    return jsonify({'likes': new_count})
+    conn = get_db()
+    try:
+        with conn.cursor() as cur:
+            cur.execute('SELECT id FROM entries WHERE id = %s', (entry_id,))
+            if not cur.fetchone():
+                return jsonify({'error': '없는 항목'}), 404
+            cur.execute('UPDATE entries SET likes = likes + 1 WHERE id = %s', (entry_id,))
+            cur.execute('SELECT likes FROM entries WHERE id = %s', (entry_id,))
+            new_count = cur.fetchone()[0]
+        conn.commit()
+        return jsonify({'likes': new_count})
+    finally:
+        conn.close()
 
 
 @app.route('/api/entries/<int:entry_id>', methods=['DELETE'])
 def delete_entry(entry_id):
-    with get_db() as conn:
-        row = conn.execute('SELECT * FROM entries WHERE id = ?', (entry_id,)).fetchone()
-        if not row:
-            return jsonify({'error': '항목을 찾을 수 없습니다.'}), 404
-        if row['media_filename']:
-            path = os.path.join(app.config['UPLOAD_FOLDER'], row['media_filename'])
-            if os.path.exists(path):
-                os.remove(path)
-        conn.execute('DELETE FROM entries WHERE id = ?', (entry_id,))
-    return jsonify({'ok': True})
+    conn = get_db()
+    try:
+        with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+            cur.execute('SELECT * FROM entries WHERE id = %s', (entry_id,))
+            row = cur.fetchone()
+            if not row:
+                return jsonify({'error': '항목을 찾을 수 없습니다.'}), 404
+            if row['media_filename']:
+                path = os.path.join(app.config['UPLOAD_FOLDER'], row['media_filename'])
+                if os.path.exists(path):
+                    os.remove(path)
+            cur.execute('DELETE FROM entries WHERE id = %s', (entry_id,))
+        conn.commit()
+        return jsonify({'ok': True})
+    finally:
+        conn.close()
 
 
 @app.route('/api/admin/verify', methods=['POST'])
@@ -130,20 +154,23 @@ def verify_admin():
 
 @app.route('/backup')
 def backup():
-    import json as _json
     key = request.args.get('key', '')
     if not ADMIN_PASSWORD or key != ADMIN_PASSWORD:
         return jsonify({'error': '권한 없음'}), 403
-    with get_db() as conn:
-        rows = conn.execute('SELECT * FROM entries ORDER BY date DESC, created_at DESC').fetchall()
-    data = [dict(r) for r in rows]
-    filename = f"journal_backup_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
-    from flask import Response
-    return Response(
-        _json.dumps(data, ensure_ascii=False, indent=2),
-        mimetype='application/json',
-        headers={'Content-Disposition': f'attachment; filename={filename}'}
-    )
+    conn = get_db()
+    try:
+        with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+            cur.execute('SELECT * FROM entries ORDER BY date DESC, created_at DESC')
+            rows = cur.fetchall()
+        data = [dict(r) for r in rows]
+        filename = f"journal_backup_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
+        return Response(
+            json.dumps(data, ensure_ascii=False, indent=2),
+            mimetype='application/json',
+            headers={'Content-Disposition': f'attachment; filename={filename}'}
+        )
+    finally:
+        conn.close()
 
 
 @app.route('/uploads/<filename>')
