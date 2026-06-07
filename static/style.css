@@ -89,7 +89,7 @@ body {
   cursor: pointer;
   border: none;
   background: none;
-  -webkit-appearance: none;
+  pointer-events: none;
 }
 
 .date-btn {
